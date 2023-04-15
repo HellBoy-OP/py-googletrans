@@ -1,4 +1,7 @@
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+DEFAULT_CLIENT_SERVICE_URLS = (
+    'translate.googleapis.com',
+)
 
 DEFAULT_SERVICE_URLS = ('translate.google.ac', 'translate.google.ad', 'translate.google.ae',
                         'translate.google.al', 'translate.google.am', 'translate.google.as',
