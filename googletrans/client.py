@@ -6,6 +6,7 @@ You can translate text using this module.
 """
 import random
 import typing
+import re
 
 import httpcore
 import httpx
@@ -14,6 +15,7 @@ from httpx import Timeout
 from googletrans import urls, utils
 from googletrans.gtoken import TokenAcquirer
 from googletrans.constants import (
+    DEFAULT_CLIENT_SERVICE_URLS,
     DEFAULT_USER_AGENT, LANGCODES, LANGUAGES, SPECIAL_CASES,
     DEFAULT_RAISE_EXCEPTION, DUMMY_DATA
 )
@@ -49,9 +51,9 @@ class Translator:
     :type raise_exception: boolean
     """
 
-    def __init__(self, service_urls=None, user_agent=DEFAULT_USER_AGENT,
+    def __init__(self, service_urls=DEFAULT_CLIENT_SERVICE_URLS, user_agent=DEFAULT_USER_AGENT,
                  raise_exception=DEFAULT_RAISE_EXCEPTION,
-                 proxies: typing.Dict[str, httpcore.SyncHTTPTransport] = None,
+                 proxies: typing.Dict[str, httpx.HTTPTransport] = None,
                  timeout: Timeout = None,
                  http2=True):
 
@@ -66,9 +68,21 @@ class Translator:
         if timeout is not None:
             self.client.timeout = timeout
 
-        self.service_urls = service_urls or ['translate.google.com']
-        self.token_acquirer = TokenAcquirer(
-            client=self.client, host=self.service_urls[0])
+        if (service_urls is not None):
+            self.client_type = 'webapp'
+            self.service_urls = service_urls
+            self.token_acquirer = TokenAcquirer(client=self.client, host=self.service_urls[0])
+
+            for t in enumerate(service_urls):
+                api_type = re.search('googleapis', service_urls[0])
+                if (api_type):
+                    self.service_urls = ['translate.googleapis.com']
+                    self.client_type = 'gtx'
+                    break
+        else:
+            self.client_type = 'webapp'
+            self.service_urls = ['translate.google.com']
+            self.token_acquirer = TokenAcquirer(client=self.client, host=self.service_urls[0])
         self.raise_exception = raise_exception
 
     def _pick_service_url(self):
@@ -77,10 +91,11 @@ class Translator:
         return random.choice(self.service_urls)
 
     def _translate(self, text, dest, src, override):
-        token = self.token_acquirer.do(text)
-        params = utils.build_params(query=text, src=src, dest=dest,
+        token = 'abcd'
+        if self.client_type == 'webapp':
+            token = self.token_acquirer.do(text)
+        params = utils.build_params(client=self.client_type, query=text, src=src, dest=dest,
                                     token=token, override=override)
-
         url = urls.TRANSLATE.format(host=self._pick_service_url())
         r = self.client.get(url, params=params)
 
